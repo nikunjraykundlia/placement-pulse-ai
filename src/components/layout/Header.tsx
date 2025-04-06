@@ -19,8 +19,7 @@ const Header = () => {
               Home
             </Link>
             <Link to="/dashboard" className="text-gray-700 hover:text-blue-600 transition-colors">
-              Dashboard
-            </Link>
+          </Link>
             <Button size="sm">Upload Resume</Button>
           </nav>
           
