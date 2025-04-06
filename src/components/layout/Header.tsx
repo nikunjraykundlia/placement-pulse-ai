@@ -14,7 +14,7 @@ const Header = () => {
           {/* Logo / Brand */}
           <Link to="/" className="font-bold text-xl flex items-center gap-2">
             <img 
-              src="/lovable-uploads/ea952b4a-227e-4256-b02c-9a2e4d73fd5b.png" 
+              src="/lovable-uploads/d31e9fa0-0ffb-4a96-8186-8fd0b01c4cc2.png" 
               alt="Placement Pulse Logo" 
               className="h-8 w-auto"
             />
@@ -25,9 +25,6 @@ const Header = () => {
           <nav className="hidden md:flex items-center space-x-6">
             <Link to="/" className="text-gray-700 hover:text-blue-600 transition-colors">
               Home
-            </Link>
-            <Link to="/dashboard" className="text-gray-700 hover:text-blue-600 transition-colors">
-              Dashboard
             </Link>
             <Button size="sm">Upload Resume</Button>
           </nav>
@@ -52,13 +49,6 @@ const Header = () => {
               onClick={() => setMobileMenuOpen(false)}
             >
               Home
-            </Link>
-            <Link 
-              to="/dashboard" 
-              className="block py-2 text-gray-700 hover:text-blue-600"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Dashboard
             </Link>
             <Button 
               className="w-full mt-2" 
