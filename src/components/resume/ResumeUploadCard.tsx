@@ -68,10 +68,11 @@ const ResumeUploadCard = () => {
 
     setIsUploading(true)
     
-    // Simulate upload process for now
-    // In a real implementation, we would send the file to a server
+    // Store that a resume was uploaded (for demo purposes)
+    localStorage.setItem('hasUploadedResume', 'true')
+    
     try {
-      // Fake API call with timeout
+      // Simulate upload process for now
       await new Promise(resolve => setTimeout(resolve, 2000))
       
       toast({
@@ -80,11 +81,10 @@ const ResumeUploadCard = () => {
         variant: "default"
       })
       
-      // Navigate to results page in real implementation
-      // For now, we'll just show a toast
+      // Navigate to dashboard
       setTimeout(() => {
         navigate("/dashboard")
-      }, 1500)
+      }, 1000)
     } catch (error) {
       toast({
         title: "Upload failed",

@@ -2,20 +2,91 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Loader2 } from "lucide-react"
+import { ArrowLeft, Upload } from "lucide-react"
 import { Link } from "react-router-dom"
+import { ResumeAnalysisResult, analyzeResume } from "@/services/resumeAnalysis"
+import ResumeAnalysisView from "@/components/resume/ResumeAnalysisView"
+import { toast } from "@/hooks/use-toast"
 
 const Dashboard = () => {
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [analysis, setAnalysis] = useState<ResumeAnalysisResult | null>(null)
+  const [hasUploadedResume, setHasUploadedResume] = useState(false)
 
-  useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
+  // Function to handle resume upload and analysis
+  const handleResumeUpload = async (file: File) => {
+    setLoading(true)
+    try {
+      // Call the analysis service
+      const result = await analyzeResume(file)
+      setAnalysis(result)
+      setHasUploadedResume(true)
+      toast({
+        title: "Resume analyzed successfully",
+        description: "View your detailed analysis below"
+      })
+    } catch (error) {
+      toast({
+        title: "Analysis failed",
+        description: "There was an error analyzing your resume. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
       setLoading(false)
-    }, 2000)
-    
-    return () => clearTimeout(timer)
+    }
+  }
+
+  // For demo purposes, we'll simulate an uploaded resume if none exists
+  useEffect(() => {
+    const hasExistingUpload = localStorage.getItem('hasUploadedResume') === 'true'
+    if (hasExistingUpload && !analysis) {
+      // Simulate analyzing an already uploaded resume
+      setLoading(true)
+      analyzeResume(new File([], "resume.pdf"))
+        .then(result => {
+          setAnalysis(result)
+          setHasUploadedResume(true)
+          setLoading(false)
+        })
+    }
   }, [])
+
+  // Save upload state in localStorage when it changes
+  useEffect(() => {
+    if (hasUploadedResume) {
+      localStorage.setItem('hasUploadedResume', 'true')
+    }
+  }, [hasUploadedResume])
+
+  // Handle file input change
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0]
+    if (!selectedFile) return
+
+    // Check if file is a PDF or DOCX
+    const fileType = selectedFile.type
+    if (fileType !== "application/pdf" && 
+        fileType !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+      toast({
+        title: "Invalid file format",
+        description: "Please upload a PDF or DOCX resume file.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Check file size (max 5MB)
+    if (selectedFile.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Maximum file size is 5MB.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    handleResumeUpload(selectedFile)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -33,88 +104,104 @@ const Dashboard = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Your Career Dashboard</h1>
           <p className="text-gray-600">
-            We're analyzing your resume to provide personalized career insights.
+            {hasUploadedResume 
+              ? "Here's your personalized resume analysis." 
+              : "Upload your resume to get personalized insights."}
           </p>
         </div>
 
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
-            <h2 className="text-xl font-medium mb-1">Analyzing Your Resume</h2>
-            <p className="text-gray-600">
-              Please wait while our AI processes your information...
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Resume Analysis</CardTitle>
-                <CardDescription>
-                  Coming in Milestone 2
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-500">
-                  Your resume has been uploaded successfully. 
-                  In the next milestone, we'll extract and analyze key skills, 
-                  education details, and experiences from your resume.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Placement Prediction</CardTitle>
-                <CardDescription>
-                  Coming in Milestone 3
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-500">
-                  We'll predict your placement opportunities including expected 
-                  salary package (LPA), suitable job roles, and companies 
-                  that might be interested in your profile.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Job Recommendations</CardTitle>
-                <CardDescription>
-                  Coming in Milestone 4
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-500">
-                  We'll connect with job market APIs to display relevant, 
-                  real-time job openings that match your qualifications and skills.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Resume Feedback</CardTitle>
-                <CardDescription>
-                  Coming in Milestone 5
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-500">
-                  We'll provide actionable suggestions to improve your resume 
-                  and enhance your chances of securing your desired role.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+        {/* Resume upload section if no resume uploaded yet */}
+        {!hasUploadedResume && !loading && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Upload Your Resume</CardTitle>
+              <CardDescription>
+                Get a detailed analysis of your resume
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div 
+                className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
+                onClick={() => document.getElementById("dashboard-resume-upload")?.click()}
+              >
+                <input
+                  type="file"
+                  id="dashboard-resume-upload"
+                  className="hidden"
+                  accept=".pdf,.docx"
+                  onChange={handleFileInput}
+                />
+                <div className="flex flex-col items-center justify-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-2">
+                    <Upload className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <p className="text-lg font-medium">Drag & Drop your resume here</p>
+                  <p className="text-sm text-gray-500">
+                    or click to browse (PDF or DOCX, max 5MB)
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
-        <div className="mt-12 text-center">
+        {/* Analysis view */}
+        <ResumeAnalysisView analysis={analysis} isLoading={loading} />
+
+        {/* Coming Soon Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
+          <Card>
+            <CardHeader>
+              <CardTitle>Placement Prediction</CardTitle>
+              <CardDescription>
+                Coming in Milestone 3
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-500">
+                We'll predict your placement opportunities including expected 
+                salary package (LPA), suitable job roles, and companies 
+                that might be interested in your profile.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Job Recommendations</CardTitle>
+              <CardDescription>
+                Coming in Milestone 4
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-500">
+                We'll connect with job market APIs to display relevant, 
+                real-time job openings that match your qualifications and skills.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Resume Feedback</CardTitle>
+              <CardDescription>
+                Coming in Milestone 5
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-500">
+                We'll provide actionable suggestions to improve your resume 
+                and enhance your chances of securing your desired role.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-8 text-center">
           <p className="text-sm text-gray-500 mb-4">
-            This is a preview of the dashboard. Future milestones will implement 
-            the actual resume analysis, placement prediction, job matching, and feedback features.
+            This is the resume analysis feature from milestone 2. Coming next: Placement prediction engine.
           </p>
           <Link to="/">
             <Button variant="outline">Back to Home</Button>
