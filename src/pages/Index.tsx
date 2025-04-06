@@ -12,7 +12,7 @@ const Index = () => {
       <section className="container max-w-6xl mx-auto px-4 pt-16 pb-12 text-center md:pt-24 md:pb-20">
         <div className="flex justify-center mb-6">
           <img 
-            src="/lovable-uploads/d31e9fa0-0ffb-4a96-8186-8fd0b01c4cc2.png" 
+            src="/lovable-uploads/49292246-d3cb-4aee-90eb-85af9374b71d.png" 
             alt="Placement Pulse Logo" 
             className="h-24 w-auto"
           />
@@ -24,9 +24,11 @@ const Index = () => {
           Empowering Engineering Students with AI-Driven Career Insights and Placement Predictions
         </p>
         <div className="flex flex-wrap justify-center gap-4">
-          <Button size="lg" className="gap-2 text-base">
-            Start Your Journey <ArrowRight size={18} />
-          </Button>
+          <Link to="/dashboard">
+            <Button size="lg" className="gap-2 text-base">
+              Start Your Journey <ArrowRight size={18} />
+            </Button>
+          </Link>
           <Button size="lg" variant="outline" className="text-base">
             Learn More
           </Button>
@@ -132,9 +134,11 @@ const Index = () => {
           <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
             Join thousands of engineering students who have accelerated their career paths with our AI-powered insights.
           </p>
-          <Button size="lg" variant="secondary" className="text-blue-600">
-            Get Started Now
-          </Button>
+          <Link to="/dashboard">
+            <Button size="lg" variant="secondary" className="text-blue-600">
+              Get Started Now
+            </Button>
+          </Link>
         </div>
       </section>
     </div>

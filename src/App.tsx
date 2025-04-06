@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import Header from "./components/layout/Header";
 
@@ -20,6 +21,8 @@ const PageTitleUpdater = () => {
     
     if (location.pathname === "/") {
       title = "Placement Pulse - AI Career Insights for Engineering Students";
+    } else if (location.pathname === "/dashboard") {
+      title = "Dashboard - Placement Pulse";
     }
     
     document.title = title;
@@ -38,6 +41,7 @@ const App = () => (
         <PageTitleUpdater />
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
