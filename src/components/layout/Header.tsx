@@ -12,8 +12,13 @@ const Header = () => {
       <div className="container max-w-6xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo / Brand */}
-          <Link to="/" className="font-bold text-xl text-blue-600">
-            Career Pathfinder
+          <Link to="/" className="font-bold text-xl flex items-center gap-2">
+            <img 
+              src="/lovable-uploads/49292246-d3cb-4aee-90eb-85af9374b71d.png" 
+              alt="Placement Pulse Logo" 
+              className="h-8 w-auto"
+            />
+            <span className="text-blue-600">Placement Pulse</span>
           </Link>
           
           {/* Desktop Navigation */}

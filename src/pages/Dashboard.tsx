@@ -6,6 +6,8 @@ import { ArrowLeft, Upload } from "lucide-react"
 import { Link } from "react-router-dom"
 import { ResumeAnalysisResult, analyzeResume } from "@/services/resumeAnalysis"
 import ResumeAnalysisView from "@/components/resume/ResumeAnalysisView"
+import PlacementPredictor from "@/components/placement/PlacementPredictor"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/hooks/use-toast"
 
 const Dashboard = () => {
@@ -105,7 +107,7 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold mb-2">Your Career Dashboard</h1>
           <p className="text-gray-600">
             {hasUploadedResume 
-              ? "Here's your personalized resume analysis." 
+              ? "Here's your personalized career analysis." 
               : "Upload your resume to get personalized insights."}
           </p>
         </div>
@@ -145,27 +147,24 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {/* Analysis view */}
-        <ResumeAnalysisView analysis={analysis} isLoading={loading} />
+        {/* Main content tabs: Resume Analysis and Placement Prediction */}
+        <Tabs defaultValue="resume" className="mb-8">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="resume">Resume Analysis</TabsTrigger>
+            <TabsTrigger value="prediction">Placement Prediction</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="resume">
+            <ResumeAnalysisView analysis={analysis} isLoading={loading} />
+          </TabsContent>
+          
+          <TabsContent value="prediction">
+            <PlacementPredictor />
+          </TabsContent>
+        </Tabs>
 
         {/* Coming Soon Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
-          <Card>
-            <CardHeader>
-              <CardTitle>Placement Prediction</CardTitle>
-              <CardDescription>
-                Coming in Milestone 3
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-500">
-                We'll predict your placement opportunities including expected 
-                salary package (LPA), suitable job roles, and companies 
-                that might be interested in your profile.
-              </p>
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <CardTitle>Job Recommendations</CardTitle>
@@ -180,9 +179,7 @@ const Dashboard = () => {
               </p>
             </CardContent>
           </Card>
-        </div>
 
-        <div className="mt-8">
           <Card>
             <CardHeader>
               <CardTitle>Resume Feedback</CardTitle>
@@ -201,7 +198,7 @@ const Dashboard = () => {
 
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-500 mb-4">
-            This is the resume analysis feature from milestone 2. Coming next: Placement prediction engine.
+            Milestone 3: Placement prediction engine based on your profile & skills
           </p>
           <Link to="/">
             <Button variant="outline">Back to Home</Button>

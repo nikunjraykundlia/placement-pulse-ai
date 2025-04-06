@@ -10,16 +10,25 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       {/* Hero Section */}
       <section className="container max-w-6xl mx-auto px-4 pt-16 pb-12 text-center md:pt-24 md:pb-20">
+        <div className="flex justify-center mb-6">
+          <img 
+            src="/lovable-uploads/49292246-d3cb-4aee-90eb-85af9374b71d.png" 
+            alt="Placement Pulse Logo" 
+            className="h-24 w-auto"
+          />
+        </div>
         <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-violet-600">
-          Career Pathfinder
+          Placement Pulse
         </h1>
         <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
           Empowering Engineering Students with AI-Driven Career Insights and Placement Predictions
         </p>
         <div className="flex flex-wrap justify-center gap-4">
-          <Button size="lg" className="gap-2 text-base">
-            Start Your Journey <ArrowRight size={18} />
-          </Button>
+          <Link to="/dashboard">
+            <Button size="lg" className="gap-2 text-base">
+              Start Your Journey <ArrowRight size={18} />
+            </Button>
+          </Link>
           <Button size="lg" variant="outline" className="text-base">
             Learn More
           </Button>
