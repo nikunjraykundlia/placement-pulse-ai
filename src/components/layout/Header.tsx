@@ -14,7 +14,7 @@ const Header = () => {
           {/* Logo / Brand */}
           <Link to="/" className="font-bold text-xl flex items-center gap-2">
             <img 
-              src="/lovable-uploads/49292246-d3cb-4aee-90eb-85af9374b71d.png" 
+              src="/lovable-uploads/ea952b4a-227e-4256-b02c-9a2e4d73fd5b.png" 
               alt="Placement Pulse Logo" 
               className="h-8 w-auto"
             />

@@ -19,8 +19,17 @@ interface PlacementDataRecord {
   Projects_completed: number;
 }
 
+// Fallback data in case Supabase fetch fails
+const fallbackData: PlacementDataRecord[] = [
+  { CGPA: 8.5, high_school_score: 85, SSC_score: 90, Web_Development: 4, Machine_Learning_Experience: 3, Cloud_Computing_Experience: 2, Database_Experience: 3, Other_Personal_Skills: 4, DSA_CP: 4, Tech_Internships: 2, Package_LPA: 10.5, Hackathon_participation: 3, Projects_completed: 4 },
+  { CGPA: 9.2, high_school_score: 92, SSC_score: 95, Web_Development: 5, Machine_Learning_Experience: 4, Cloud_Computing_Experience: 4, Database_Experience: 4, Other_Personal_Skills: 5, DSA_CP: 5, Tech_Internships: 3, Package_LPA: 18.5, Hackathon_participation: 4, Projects_completed: 5 },
+  { CGPA: 7.8, high_school_score: 76, SSC_score: 82, Web_Development: 3, Machine_Learning_Experience: 2, Cloud_Computing_Experience: 1, Database_Experience: 2, Other_Personal_Skills: 3, DSA_CP: 2, Tech_Internships: 1, Package_LPA: 7.2, Hackathon_participation: 1, Projects_completed: 2 },
+  { CGPA: 8.9, high_school_score: 88, SSC_score: 91, Web_Development: 4, Machine_Learning_Experience: 5, Cloud_Computing_Experience: 3, Database_Experience: 4, Other_Personal_Skills: 3, DSA_CP: 5, Tech_Internships: 2, Package_LPA: 14.0, Hackathon_participation: 3, Projects_completed: 4 },
+  { CGPA: 6.5, high_school_score: 72, SSC_score: 75, Web_Development: 2, Machine_Learning_Experience: 1, Cloud_Computing_Experience: 1, Database_Experience: 1, Other_Personal_Skills: 2, DSA_CP: 1, Tech_Internships: 0, Package_LPA: 5.5, Hackathon_participation: 0, Projects_completed: 2 }
+];
+
 // Model management
-let model: tf.LayersModel | null = null;
+let model: tf.Sequential | null = null;
 let isModelLoading = false;
 let modelLoadError: string | null = null;
 
@@ -40,6 +49,13 @@ export const loadPlacementData = async (): Promise<PlacementDataRecord[]> => {
       throw new Error(error.message);
     }
 
+    if (!data || data.length === 0) {
+      console.warn('No data returned from Supabase, using fallback data');
+      return fallbackData;
+    }
+
+    console.log(`Successfully loaded ${data.length} records from Supabase`);
+    
     // Transform the raw data into our expected format
     return data.map(record => ({
       CGPA: record['CGPA/GPA/Degree_score'] || 0,
@@ -57,8 +73,8 @@ export const loadPlacementData = async (): Promise<PlacementDataRecord[]> => {
       Projects_completed: Number(record['Number_of_projects_completed'] || 0),
     }));
   } catch (error) {
-    console.error('Failed to load placement data:', error);
-    return [];
+    console.error('Failed to load placement data from Supabase, using fallback data:', error);
+    return fallbackData;
   }
 };
 
@@ -141,10 +157,10 @@ export const trainPlacementModel = async (): Promise<void> => {
     const xs = tf.tensor2d(normalizedFeatures);
     const ys = tf.tensor1d(normalizedLabels);
     
-    // Define the model architecture
+    // Define the model architecture - FIXED: using tf.sequential() instead of LayersModel
     model = tf.sequential();
     
-    // Add layers
+    // Add layers - FIXED: correct method calls on Sequential model
     model.add(tf.layers.dense({
       inputShape: [numFeatures],
       units: 16,
