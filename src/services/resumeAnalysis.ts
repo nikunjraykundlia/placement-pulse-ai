@@ -79,15 +79,106 @@ const mockAnalysisResult: ResumeAnalysisResult = {
   overallScore: 78
 };
 
-export const analyzeResume = async (file: File): Promise<ResumeAnalysisResult> => {
-  // In a real implementation, this would send the file to a backend service
-  // that uses NLP/ML to analyze the resume
+/**
+ * Parse resume content using OCR-like approach
+ * This simulates an OCR and NLP pipeline that would extract structured data
+ * @param resumeText The extracted text from the resume
+ */
+const parseResumeContent = (file: File): Promise<ResumeAnalysisResult> => {
+  // In a real implementation, we would use OCR to extract text and then NLP to parse
+  // Since we're mocking, we'll enhance our mock data to be more comprehensive
   
-  // For now, we'll simulate an API call with a timeout
+  const enhancedMockResult: ResumeAnalysisResult = {
+    topSkills: [
+      { skill: "JavaScript", level: "expert", relevance: 95 },
+      { skill: "React", level: "advanced", relevance: 90 },
+      { skill: "Node.js", level: "intermediate", relevance: 85 },
+      { skill: "TypeScript", level: "advanced", relevance: 88 },
+      { skill: "REST API Design", level: "advanced", relevance: 82 },
+      { skill: "GraphQL", level: "intermediate", relevance: 75 },
+      { skill: "SQL", level: "advanced", relevance: 80 },
+      { skill: "Git", level: "advanced", relevance: 85 }
+    ],
+    keywordMatches: {
+      "frontend": 12,
+      "backend": 8,
+      "full-stack": 6,
+      "agile": 4,
+      "testing": 5,
+      "cloud": 6,
+      "architecture": 3,
+      "optimization": 4,
+      "performance": 5,
+      "responsive": 7,
+      "component": 9,
+      "scaling": 3
+    },
+    education: [
+      {
+        degree: "B.Tech in Computer Science and Engineering",
+        institution: "Indian Institute of Technology, Bombay",
+        year: "2019-2023",
+        score: "9.2 CGPA"
+      },
+      {
+        degree: "Higher Secondary Education",
+        institution: "Delhi Public School",
+        year: "2017-2019",
+        score: "95.6%"
+      }
+    ],
+    experience: [
+      {
+        role: "Software Engineer Intern",
+        company: "Microsoft",
+        duration: "May 2022 - July 2022",
+        highlights: [
+          "Developed and implemented new features for Microsoft Teams",
+          "Created responsive UI components using React and TypeScript",
+          "Worked on performance optimization reducing load time by 40%",
+          "Collaborated with a team of 8 engineers using Agile methodology"
+        ]
+      },
+      {
+        role: "Web Development Lead",
+        company: "College Technical Society",
+        duration: "Jan 2021 - Present",
+        highlights: [
+          "Lead a team of 6 developers for college website redesign",
+          "Implemented authentication system and user dashboard",
+          "Organized code workshops and hackathons for juniors",
+          "Reduced page load time by 60% through code optimization"
+        ]
+      },
+      {
+        role: "Open Source Contributor",
+        company: "Various GitHub Projects",
+        duration: "2020 - Present",
+        highlights: [
+          "Contributed to React-based open source libraries",
+          "Fixed bugs and implemented new features for community projects",
+          "Created documentation and examples for beginners"
+        ]
+      }
+    ],
+    overallScore: 87
+  };
+
+  return Promise.resolve(enhancedMockResult);
+};
+
+export const analyzeResume = async (file: File): Promise<ResumeAnalysisResult> => {
+  // In a real implementation, this would:
+  // 1. Extract text from the PDF/DOCX using OCR or pdf.js/mammoth.js
+  // 2. Use NLP to identify sections and parse content
+  // 3. Analyze the content for skills, experience, etc.
+  
+  // For development purposes, use enhanced mock data that simulates parsing
   return new Promise((resolve) => {
     setTimeout(() => {
-      // Return mock data
-      resolve(mockAnalysisResult);
+      // Simulate resume parsing
+      const analysisResult = parseResumeContent(file);
+      analysisResult.then(result => resolve(result));
     }, 3000); // Simulate a 3-second processing time
   });
 };

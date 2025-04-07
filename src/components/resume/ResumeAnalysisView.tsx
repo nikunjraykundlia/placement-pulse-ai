@@ -47,11 +47,19 @@ const ResumeAnalysisView = ({ analysis, isLoading }: ResumeAnalysisViewProps) =>
           <div className="relative w-full h-36 flex items-center justify-center">
             <div className="absolute">
               <div className="flex flex-col items-center">
-                <span className="text-5xl font-bold">{analysis.overallScore}</span>
+                <span className="text-5xl font-bold text-blue-600">{analysis.overallScore}</span>
                 <span className="text-sm text-gray-500">out of 100</span>
               </div>
             </div>
-            {/* This would be a better place for a circular progress or gauge chart */}
+            <div className="w-36 h-36 rounded-full border-8 border-blue-100">
+              <div 
+                className="w-full h-full rounded-full border-8 border-t-blue-500" 
+                style={{ 
+                  transform: `rotate(${analysis.overallScore * 3.6}deg)`,
+                  transition: 'transform 1.5s ease-in-out'
+                }}
+              ></div>
+            </div>
           </div>
         </CardContent>
       </Card>
