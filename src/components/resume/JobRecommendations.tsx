@@ -38,7 +38,7 @@ const formatSalary = (min?: number, max?: number, currency: string = 'INR') => {
   return formatValue(min || max || 0);
 };
 
-const calculateMatchPercentage = (jobSkills: string[] = [], userSkills: string[] = []) => {
+const calculateMatchPercentage = (jobSkills: string[] = [], userSkills: any[] = []) => {
   if (jobSkills.length === 0 || userSkills.length === 0) return 60;
   
   // Extract just the skill names from user skills objects

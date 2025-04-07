@@ -2,12 +2,13 @@
 import { ResumeAnalysisResult } from "@/services/resumeAnalysis";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CircleDashed } from "lucide-react";
+import { CircleDashed, AlertTriangle, LightbulbIcon } from "lucide-react";
 import SkillCard from "./SkillCard";
 import EducationCard from "./EducationCard";
 import ExperienceCard from "./ExperienceCard";
 import KeywordCloud from "./KeywordCloud";
 import JobRecommendations from "./JobRecommendations";
+import ResumeSuggestions from "./ResumeSuggestions";
 
 interface ResumeAnalysisViewProps {
   analysis: ResumeAnalysisResult | null;
@@ -66,49 +67,77 @@ const ResumeAnalysisView = ({ analysis, isLoading }: ResumeAnalysisViewProps) =>
       </Card>
 
       <Tabs defaultValue="skills">
-        <TabsList className="grid grid-cols-5 mb-4">
+        <TabsList className="grid grid-cols-6 mb-4">
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="education">Education</TabsTrigger>
           <TabsTrigger value="experience">Experience</TabsTrigger>
           <TabsTrigger value="keywords">Keywords</TabsTrigger>
           <TabsTrigger value="jobs">Jobs</TabsTrigger>
+          <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
         </TabsList>
         
         <TabsContent value="skills">
           <div className="grid gap-4 md:grid-cols-2">
-            {analysis.topSkills.map((skill, index) => (
-              <SkillCard 
-                key={index} 
-                skill={skill.skill} 
-                level={skill.level} 
-                relevance={skill.relevance} 
-              />
-            ))}
+            {analysis.topSkills.length > 0 ? (
+              analysis.topSkills.map((skill, index) => (
+                <SkillCard 
+                  key={index} 
+                  skill={skill.skill} 
+                  level={skill.level} 
+                  relevance={skill.relevance} 
+                />
+              ))
+            ) : (
+              <div className="col-span-2 flex items-center justify-center p-8 border rounded-md">
+                <div className="flex flex-col items-center text-center">
+                  <AlertTriangle className="h-8 w-8 text-amber-500 mb-2" />
+                  <p>No skills detected in your resume. Consider adding relevant technical and soft skills.</p>
+                </div>
+              </div>
+            )}
           </div>
         </TabsContent>
         
         <TabsContent value="education" className="space-y-4">
-          {analysis.education.map((edu, index) => (
-            <EducationCard
-              key={index}
-              degree={edu.degree}
-              institution={edu.institution}
-              year={edu.year}
-              score={edu.score}
-            />
-          ))}
+          {analysis.education.length > 0 && analysis.education[0].degree !== "Degree not detected" ? (
+            analysis.education.map((edu, index) => (
+              <EducationCard
+                key={index}
+                degree={edu.degree}
+                institution={edu.institution}
+                year={edu.year}
+                score={edu.score}
+              />
+            ))
+          ) : (
+            <div className="flex items-center justify-center p-8 border rounded-md">
+              <div className="flex flex-col items-center text-center">
+                <AlertTriangle className="h-8 w-8 text-amber-500 mb-2" />
+                <p>No education details detected in your resume. Make sure to include your academic background.</p>
+              </div>
+            </div>
+          )}
         </TabsContent>
         
         <TabsContent value="experience" className="space-y-4">
-          {analysis.experience.map((exp, index) => (
-            <ExperienceCard
-              key={index}
-              role={exp.role}
-              company={exp.company}
-              duration={exp.duration}
-              highlights={exp.highlights}
-            />
-          ))}
+          {analysis.experience.length > 0 && analysis.experience[0].role !== "Role not detected" ? (
+            analysis.experience.map((exp, index) => (
+              <ExperienceCard
+                key={index}
+                role={exp.role}
+                company={exp.company}
+                duration={exp.duration}
+                highlights={exp.highlights}
+              />
+            ))
+          ) : (
+            <div className="flex items-center justify-center p-8 border rounded-md">
+              <div className="flex flex-col items-center text-center">
+                <AlertTriangle className="h-8 w-8 text-amber-500 mb-2" />
+                <p>No work experience detected in your resume. Add relevant work history or projects.</p>
+              </div>
+            </div>
+          )}
         </TabsContent>
         
         <TabsContent value="keywords">
@@ -117,6 +146,10 @@ const ResumeAnalysisView = ({ analysis, isLoading }: ResumeAnalysisViewProps) =>
         
         <TabsContent value="jobs">
           <JobRecommendations analysis={analysis} />
+        </TabsContent>
+        
+        <TabsContent value="suggestions">
+          <ResumeSuggestions suggestions={analysis.improvementSuggestions || []} />
         </TabsContent>
       </Tabs>
     </div>

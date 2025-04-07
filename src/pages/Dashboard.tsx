@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Upload } from "lucide-react"
+import { ArrowLeft, Upload, FileText } from "lucide-react"
 import { Link } from "react-router-dom"
 import { ResumeAnalysisResult, analyzeResume } from "@/services/resumeAnalysis"
 import ResumeAnalysisView from "@/components/resume/ResumeAnalysisView"
@@ -65,13 +65,21 @@ const Dashboard = () => {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
 
-    // Check if file is a PDF or DOCX
+    // Check if file is a supported format
     const fileType = selectedFile.type
-    if (fileType !== "application/pdf" && 
-        fileType !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    const validTypes = [
+      "application/pdf", 
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp"
+    ];
+
+    if (!validTypes.includes(fileType)) {
       toast({
         title: "Invalid file format",
-        description: "Please upload a PDF or DOCX resume file.",
+        description: "Please upload a PDF, DOCX, or image resume file.",
         variant: "destructive"
       })
       return
@@ -130,16 +138,16 @@ const Dashboard = () => {
                   type="file"
                   id="dashboard-resume-upload"
                   className="hidden"
-                  accept=".pdf,.docx"
+                  accept=".pdf,.docx,.jpg,.jpeg,.png,.gif,.webp"
                   onChange={handleFileInput}
                 />
                 <div className="flex flex-col items-center justify-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-2">
-                    <Upload className="h-6 w-6 text-blue-600" />
+                    <FileText className="h-6 w-6 text-blue-600" />
                   </div>
                   <p className="text-lg font-medium">Drag & Drop your resume here</p>
                   <p className="text-sm text-gray-500">
-                    or click to browse (PDF or DOCX, max 5MB)
+                    or click to browse (PDF, DOCX, or images, max 5MB)
                   </p>
                 </div>
               </div>
@@ -169,12 +177,12 @@ const Dashboard = () => {
             <CardHeader>
               <CardTitle>Job Recommendations</CardTitle>
               <CardDescription>
-                Coming in Milestone 4
+                Now available in Milestone 4
               </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-gray-500">
-                We'll connect with job market APIs to display relevant, 
+                We connect with job market APIs to display relevant, 
                 real-time job openings that match your qualifications and skills.
               </p>
             </CardContent>
@@ -184,12 +192,12 @@ const Dashboard = () => {
             <CardHeader>
               <CardTitle>Resume Feedback</CardTitle>
               <CardDescription>
-                Coming in Milestone 5
+                Now available in Milestone 5
               </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-gray-500">
-                We'll provide actionable suggestions to improve your resume 
+                We provide actionable suggestions to improve your resume 
                 and enhance your chances of securing your desired role.
               </p>
             </CardContent>
@@ -198,7 +206,7 @@ const Dashboard = () => {
 
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-500 mb-4">
-            Milestone 3: Placement prediction engine based on your profile & skills
+            Milestone 5: Resume improvement suggestions based on detailed analysis
           </p>
           <Link to="/">
             <Button variant="outline">Back to Home</Button>
@@ -209,4 +217,4 @@ const Dashboard = () => {
   )
 }
 
-export default Dashboard
+export default Dashboard;
