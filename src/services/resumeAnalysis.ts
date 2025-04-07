@@ -1,6 +1,6 @@
 
-// This is a mock service for resume analysis
-// In production, this would connect to a backend API using ML/NLP
+import { createWorker } from 'tesseract.js';
+import { JobSearchParams } from './jobPostings';
 
 interface SkillAnalysis {
   skill: string;
@@ -28,9 +28,204 @@ export interface ResumeAnalysisResult {
   education: EducationDetail[];
   experience: ExperienceDetail[];
   overallScore: number; // 0-100 scale
+  preferredJobTitles?: string[];
+  preferredLocations?: string[];
 }
 
-// Mock data for development/demo purposes
+// Function to extract text from a PDF or image using Tesseract OCR
+const extractTextFromFile = async (file: File): Promise<string> => {
+  try {
+    // For PDFs, we'd need PDF.js to convert to images first
+    // For simplicity in this demo, we'll focus on image processing
+
+    // If the file is an image, process directly with Tesseract
+    if (file.type.startsWith('image/')) {
+      const worker = await createWorker();
+      
+      // Convert file to data URL for Tesseract to process
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      
+      await worker.loadLanguage('eng');
+      await worker.initialize('eng');
+      
+      console.log('Processing image with Tesseract OCR...');
+      const { data: { text } } = await worker.recognize(dataUrl);
+      
+      await worker.terminate();
+      console.log('Tesseract OCR processing complete');
+      return text;
+    } 
+    // For demonstration purposes, return mock text for PDFs
+    // In a real implementation, PDF.js would be used to render PDF pages as images
+    else if (file.type === 'application/pdf') {
+      console.log('PDF detected. In a real implementation, PDF.js would render pages as images for OCR');
+      return "This is mock text for PDF files. In a complete implementation, PDF.js would be used to convert PDF pages to images for OCR processing.";
+    } 
+    // For DOCX files, a different approach would be needed
+    else {
+      console.log('Unsupported file type for direct OCR. Mock text will be used.');
+      return "This is mock text for unsupported file types. In a complete implementation, converters for different document formats would be implemented.";
+    }
+  } catch (error) {
+    console.error('Error in OCR processing:', error);
+    return "Error processing file with OCR. Using mock data instead.";
+  }
+};
+
+// Function to parse text and extract structured information
+const parseResumeText = (text: string): ResumeAnalysisResult => {
+  console.log('Parsing extracted text...');
+  console.log('Sample of extracted text:', text.substring(0, 200) + '...');
+  
+  // In a real implementation, this would use NLP to extract structured information
+  // For demo purposes, we'll simulate extraction with some simple pattern matching
+  
+  // Extract skills (keywords frequently found in tech resumes)
+  const skillKeywords = ['JavaScript', 'Python', 'React', 'Node.js', 'TypeScript', 
+                        'SQL', 'Java', 'C++', 'C#', 'HTML', 'CSS', 'AWS', 'Azure',
+                        'Docker', 'Kubernetes', 'Git', 'GitHub', 'REST API', 'GraphQL',
+                        'MongoDB', 'Express', 'Django', 'Flask', 'Spring Boot'];
+  
+  const extractedSkills: SkillAnalysis[] = [];
+  let textLower = text.toLowerCase();
+  
+  skillKeywords.forEach(skill => {
+    if (textLower.includes(skill.toLowerCase())) {
+      // Simple scoring based on frequency and position in text
+      const count = (textLower.match(new RegExp(skill.toLowerCase(), 'g')) || []).length;
+      const position = textLower.indexOf(skill.toLowerCase());
+      const relevance = Math.min(100, 60 + count * 10 + (position < 500 ? 10 : 0));
+      
+      let level: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+      if (relevance > 90) level = 'expert';
+      else if (relevance > 80) level = 'advanced';
+      else if (relevance > 70) level = 'intermediate';
+      else level = 'beginner';
+      
+      extractedSkills.push({ 
+        skill, 
+        level, 
+        relevance
+      });
+    }
+  });
+  
+  // Sort skills by relevance
+  extractedSkills.sort((a, b) => b.relevance - a.relevance);
+  
+  // Extract education (look for common degree abbreviations and education keywords)
+  const educationRegex = /(?:B\.?(?:Tech|Sc|A|E|S)|M\.?(?:Tech|Sc|A|BA|S)|Ph\.?D|MBA)(?:.{0,100}?)(?:19|20)\d{2}(?:\s*-\s*(?:19|20)\d{2}|present)?/gi;
+  const educationMatches = text.match(educationRegex) || [];
+  
+  const education: EducationDetail[] = educationMatches.map(match => {
+    // Simple parsing logic - in real implementation would be more robust
+    return {
+      degree: match.split(' ')[0] || "Degree",
+      institution: "University/College", // Would extract from context in real impl
+      year: match.match(/(19|20)\d{2}(?:\s*-\s*(?:(?:19|20)\d{2}|present))?/i)?.[0] || "Unknown",
+      score: "Not specified" // Would extract GPA/percentage if available
+    };
+  });
+  
+  // If no education detected, provide default placeholder
+  if (education.length === 0) {
+    education.push({
+      degree: "Degree not detected",
+      institution: "Institution not detected",
+      year: "Year not detected",
+      score: "Score not detected"
+    });
+  }
+  
+  // Extract experience (look for job titles followed by company names)
+  const jobTitles = ['Engineer', 'Developer', 'Manager', 'Analyst', 'Designer', 
+                     'Consultant', 'Intern', 'Director', 'Lead'];
+  
+  const experience: ExperienceDetail[] = [];
+  
+  jobTitles.forEach(title => {
+    const regex = new RegExp(`((?:\\w+\\s){0,2}${title}(?:\\s\\w+){0,2})(?:.{0,100}?)(?:19|20)\\d{2}(?:\\s*-\\s*(?:(?:19|20)\\d{2}|present))?`, 'gi');
+    const matches = text.matchAll(regex);
+    
+    for (const match of matches) {
+      const fullMatch = match[0];
+      const role = match[1] || "Role not specified";
+      const durationMatch = fullMatch.match(/(19|20)\d{2}(?:\s*-\s*(?:(?:19|20)\d{2}|present))?/i);
+      
+      if (durationMatch) {
+        experience.push({
+          role: role,
+          company: "Company not specified", // Would extract from context
+          duration: durationMatch[0],
+          highlights: ["Responsibilities not specified"] // Would extract bullet points
+        });
+      }
+    }
+  });
+  
+  // If no experience detected, provide default placeholder
+  if (experience.length === 0) {
+    experience.push({
+      role: "Role not detected",
+      company: "Company not detected",
+      duration: "Duration not detected",
+      highlights: ["Experience details not detected"]
+    });
+  }
+  
+  // Extract keyword matches
+  const keywordMatches: { [key: string]: number } = {};
+  const commonKeywords = ['project', 'team', 'management', 'development', 'design', 
+                         'implementation', 'analysis', 'research', 'client', 'customer',
+                         'leadership', 'communication', 'problem-solving', 'innovation'];
+  
+  commonKeywords.forEach(keyword => {
+    const count = (textLower.match(new RegExp(keyword, 'gi')) || []).length;
+    if (count > 0) {
+      keywordMatches[keyword] = count;
+    }
+  });
+  
+  // Calculate overall score based on extracted data
+  let overallScore = 75; // Base score
+  
+  // Adjust based on detected skills
+  overallScore += Math.min(15, extractedSkills.length * 2); // Up to +15 for skills
+  
+  // Adjust based on detected education
+  overallScore += Math.min(5, education.length * 5); // Up to +5 for education
+  
+  // Adjust based on detected experience
+  overallScore += Math.min(10, experience.length * 2.5); // Up to +10 for experience
+  
+  // Adjust based on detected keywords
+  overallScore += Math.min(5, Object.keys(keywordMatches).length * 0.5); // Up to +5 for keywords
+  
+  // Ensure score is within 0-100 range
+  overallScore = Math.max(0, Math.min(100, Math.round(overallScore)));
+  
+  // Extract potential job titles and locations for job matching
+  const preferredJobTitles = extractedSkills.length > 0 
+    ? [extractedSkills[0].skill + ' Developer', extractedSkills[0].skill + ' Engineer'] 
+    : ['Software Developer', 'Software Engineer'];
+  
+  // Return the structured result
+  return {
+    topSkills: extractedSkills.slice(0, 10), // Top 10 skills
+    education,
+    experience,
+    keywordMatches,
+    overallScore,
+    preferredJobTitles,
+    preferredLocations: ['Bengaluru', 'Hyderabad', 'Mumbai', 'Pune', 'Delhi', 'Chennai']
+  };
+};
+
+// Mock data for fallback
 const mockAnalysisResult: ResumeAnalysisResult = {
   topSkills: [
     { skill: "Java", level: "advanced", relevance: 90 },
@@ -80,105 +275,44 @@ const mockAnalysisResult: ResumeAnalysisResult = {
 };
 
 /**
- * Parse resume content using OCR-like approach
- * This simulates an OCR and NLP pipeline that would extract structured data
- * @param resumeText The extracted text from the resume
+ * Parse resume content using OCR
+ * @param file The resume file to analyze
  */
-const parseResumeContent = (file: File): Promise<ResumeAnalysisResult> => {
-  // In a real implementation, we would use OCR to extract text and then NLP to parse
-  // Since we're mocking, we'll enhance our mock data to be more comprehensive
-  
-  const enhancedMockResult: ResumeAnalysisResult = {
-    topSkills: [
-      { skill: "JavaScript", level: "expert", relevance: 95 },
-      { skill: "React", level: "advanced", relevance: 90 },
-      { skill: "Node.js", level: "intermediate", relevance: 85 },
-      { skill: "TypeScript", level: "advanced", relevance: 88 },
-      { skill: "REST API Design", level: "advanced", relevance: 82 },
-      { skill: "GraphQL", level: "intermediate", relevance: 75 },
-      { skill: "SQL", level: "advanced", relevance: 80 },
-      { skill: "Git", level: "advanced", relevance: 85 }
-    ],
-    keywordMatches: {
-      "frontend": 12,
-      "backend": 8,
-      "full-stack": 6,
-      "agile": 4,
-      "testing": 5,
-      "cloud": 6,
-      "architecture": 3,
-      "optimization": 4,
-      "performance": 5,
-      "responsive": 7,
-      "component": 9,
-      "scaling": 3
-    },
-    education: [
-      {
-        degree: "B.Tech in Computer Science and Engineering",
-        institution: "Indian Institute of Technology, Bombay",
-        year: "2019-2023",
-        score: "9.2 CGPA"
-      },
-      {
-        degree: "Higher Secondary Education",
-        institution: "Delhi Public School",
-        year: "2017-2019",
-        score: "95.6%"
-      }
-    ],
-    experience: [
-      {
-        role: "Software Engineer Intern",
-        company: "Microsoft",
-        duration: "May 2022 - July 2022",
-        highlights: [
-          "Developed and implemented new features for Microsoft Teams",
-          "Created responsive UI components using React and TypeScript",
-          "Worked on performance optimization reducing load time by 40%",
-          "Collaborated with a team of 8 engineers using Agile methodology"
-        ]
-      },
-      {
-        role: "Web Development Lead",
-        company: "College Technical Society",
-        duration: "Jan 2021 - Present",
-        highlights: [
-          "Lead a team of 6 developers for college website redesign",
-          "Implemented authentication system and user dashboard",
-          "Organized code workshops and hackathons for juniors",
-          "Reduced page load time by 60% through code optimization"
-        ]
-      },
-      {
-        role: "Open Source Contributor",
-        company: "Various GitHub Projects",
-        duration: "2020 - Present",
-        highlights: [
-          "Contributed to React-based open source libraries",
-          "Fixed bugs and implemented new features for community projects",
-          "Created documentation and examples for beginners"
-        ]
-      }
-    ],
-    overallScore: 87
-  };
-
-  return Promise.resolve(enhancedMockResult);
+const parseResumeContent = async (file: File): Promise<ResumeAnalysisResult> => {
+  try {
+    console.log('Starting OCR processing for file:', file.name);
+    
+    // Extract text using OCR
+    const extractedText = await extractTextFromFile(file);
+    
+    if (!extractedText || extractedText.trim().length === 0) {
+      console.log('No text extracted or empty result, using mock data');
+      return mockAnalysisResult;
+    }
+    
+    // Parse the extracted text to get structured information
+    return parseResumeText(extractedText);
+  } catch (error) {
+    console.error('Error parsing resume content:', error);
+    return mockAnalysisResult;
+  }
 };
 
 export const analyzeResume = async (file: File): Promise<ResumeAnalysisResult> => {
-  // In a real implementation, this would:
-  // 1. Extract text from the PDF/DOCX using OCR or pdf.js/mammoth.js
-  // 2. Use NLP to identify sections and parse content
-  // 3. Analyze the content for skills, experience, etc.
-  
-  // For development purposes, use enhanced mock data that simulates parsing
   return new Promise((resolve) => {
-    setTimeout(() => {
-      // Simulate resume parsing
-      const analysisResult = parseResumeContent(file);
-      analysisResult.then(result => resolve(result));
-    }, 3000); // Simulate a 3-second processing time
+    console.log('Starting resume analysis for file:', file.name);
+    
+    // Show processing indicator
+    setTimeout(async () => {
+      try {
+        // Attempt OCR and parsing
+        const analysisResult = await parseResumeContent(file);
+        resolve(analysisResult);
+      } catch (error) {
+        console.error('Error in resume analysis:', error);
+        // Fallback to mock data if any error occurs
+        resolve(mockAnalysisResult);
+      }
+    }, 2000); // Simulate some processing time
   });
 };

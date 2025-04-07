@@ -22,7 +22,7 @@ const ResumeAnalysisView = ({ analysis, isLoading }: ResumeAnalysisViewProps) =>
         <div className="text-center">
           <h2 className="text-xl font-medium mb-1">Analyzing Your Resume</h2>
           <p className="text-gray-500">
-            Our AI is extracting key information from your resume...
+            Our AI is extracting key information from your resume using OCR technology...
           </p>
         </div>
       </div>
