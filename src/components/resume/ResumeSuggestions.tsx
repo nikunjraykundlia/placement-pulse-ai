@@ -1,8 +1,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LightbulbIcon, Check, PenLine } from "lucide-react";
+import { LightbulbIcon, Check, PenLine, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 
 interface ResumeSuggestionsProps {
   suggestions: string[];
@@ -16,10 +17,15 @@ const ResumeSuggestions = ({ suggestions }: ResumeSuggestionsProps) => {
       setCompletedSuggestions(completedSuggestions.filter(i => i !== index));
     } else {
       setCompletedSuggestions([...completedSuggestions, index]);
+      // Show toast when marking a suggestion as completed
+      toast({
+        title: "Suggestion marked as completed",
+        description: "Keep improving your resume with our suggestions",
+      });
     }
   };
 
-  if (suggestions.length === 0) {
+  if (!suggestions || suggestions.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -29,11 +35,20 @@ const ResumeSuggestions = ({ suggestions }: ResumeSuggestionsProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-2 pb-6 text-center">
-          <p className="text-gray-500">No suggestions available for your resume at this time.</p>
+          <div className="flex flex-col items-center gap-2 py-6">
+            <AlertTriangle className="h-8 w-8 text-amber-500" />
+            <p className="text-gray-500">No suggestions available for your resume at this time.</p>
+            <p className="text-sm text-gray-400">
+              This could be because your resume is already well-formatted or because we couldn't extract enough information.
+            </p>
+          </div>
         </CardContent>
       </Card>
     );
   }
+
+  // Calculate completion percentage
+  const completionPercentage = Math.round((completedSuggestions.length / suggestions.length) * 100);
 
   return (
     <Card>
@@ -45,9 +60,14 @@ const ResumeSuggestions = ({ suggestions }: ResumeSuggestionsProps) => {
       </CardHeader>
       <CardContent className="pt-6">
         <div className="space-y-4">
-          <p className="text-gray-600 mb-6">
-            Applying these suggestions could significantly improve your resume's effectiveness and increase your chances of landing interviews.
-          </p>
+          <div className="flex justify-between items-center mb-4">
+            <p className="text-gray-600">
+              Applying these suggestions could significantly improve your resume's effectiveness.
+            </p>
+            <div className="bg-gray-100 rounded-full px-2 py-1 text-xs font-medium">
+              {completionPercentage}% complete
+            </div>
+          </div>
           
           <div className="space-y-4">
             {suggestions.map((suggestion, index) => (

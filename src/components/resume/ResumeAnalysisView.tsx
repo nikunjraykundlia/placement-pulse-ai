@@ -2,7 +2,7 @@
 import { ResumeAnalysisResult } from "@/services/resumeAnalysis";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CircleDashed, AlertTriangle, LightbulbIcon } from "lucide-react";
+import { CircleDashed, AlertTriangle, LightbulbIcon, FileText } from "lucide-react";
 import SkillCard from "./SkillCard";
 import EducationCard from "./EducationCard";
 import ExperienceCard from "./ExperienceCard";
@@ -63,6 +63,17 @@ const ResumeAnalysisView = ({ analysis, isLoading }: ResumeAnalysisViewProps) =>
               ></div>
             </div>
           </div>
+          
+          <div className="mt-6 text-center max-w-md mx-auto">
+            <p className="text-sm text-gray-600">
+              {analysis.overallScore >= 80 ? 
+                "Excellent! Your resume is well-structured and contains key information that will appeal to recruiters." :
+                analysis.overallScore >= 60 ?
+                "Good start! Your resume has some strong points, but check the suggestions tab for ways to improve." :
+                "Your resume needs some work. Visit the suggestions tab for specific improvements to boost your chances."
+              }
+            </p>
+          </div>
         </CardContent>
       </Card>
 
@@ -78,7 +89,7 @@ const ResumeAnalysisView = ({ analysis, isLoading }: ResumeAnalysisViewProps) =>
         
         <TabsContent value="skills">
           <div className="grid gap-4 md:grid-cols-2">
-            {analysis.topSkills.length > 0 ? (
+            {analysis.topSkills.length > 0 && analysis.topSkills[0].skill !== "undefined" ? (
               analysis.topSkills.map((skill, index) => (
                 <SkillCard 
                   key={index} 
@@ -151,6 +162,28 @@ const ResumeAnalysisView = ({ analysis, isLoading }: ResumeAnalysisViewProps) =>
         <TabsContent value="suggestions">
           <ResumeSuggestions suggestions={analysis.improvementSuggestions || []} />
         </TabsContent>
+        
+        {/* Add a debug tab to show raw text when in development mode */}
+        {process.env.NODE_ENV === 'development' && analysis.rawText && (
+          <>
+            <TabsTrigger value="debug" className="ml-2">Debug</TabsTrigger>
+            <TabsContent value="debug">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-gray-500" />
+                    Raw Extracted Text
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <pre className="bg-gray-100 p-4 rounded text-xs overflow-auto max-h-96">
+                    {analysis.rawText}
+                  </pre>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </>
+        )}
       </Tabs>
     </div>
   );

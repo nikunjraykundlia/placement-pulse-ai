@@ -1,6 +1,5 @@
 
 import { createWorker } from 'tesseract.js';
-import { JobSearchParams } from './jobPostings';
 import { pdfjs } from 'react-pdf';
 
 // Initialize PDF.js worker
@@ -35,11 +34,13 @@ export interface ResumeAnalysisResult {
   preferredJobTitles?: string[];
   preferredLocations?: string[];
   improvementSuggestions?: string[]; // Added for milestone 5
+  rawText?: string; // Store raw text for debugging
 }
 
 // Function to extract text from a PDF using PDF.js
 const extractTextFromPDF = async (file: File): Promise<string> => {
   try {
+    console.log("Starting PDF text extraction...");
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
     let fullText = '';
@@ -52,7 +53,7 @@ const extractTextFromPDF = async (file: File): Promise<string> => {
       fullText += pageText + ' ';
     }
     
-    console.log('PDF text extraction successful');
+    console.log('PDF text extraction successful. Sample text:', fullText.substring(0, 200));
     return fullText;
   } catch (error) {
     console.error('Error extracting PDF text:', error);
@@ -72,7 +73,8 @@ const extractTextFromFile = async (file: File): Promise<string> => {
     
     // Handle images (JPEG, PNG, etc.)
     if (file.type.startsWith('image/')) {
-      const worker = await createWorker();
+      console.log('Processing image with Tesseract OCR...');
+      const worker = await createWorker('eng');
       
       // Convert file to data URL for Tesseract to process
       const dataUrl = await new Promise<string>((resolve) => {
@@ -81,14 +83,11 @@ const extractTextFromFile = async (file: File): Promise<string> => {
         reader.readAsDataURL(file);
       });
       
-      await worker.loadLanguage('eng');
-      await worker.initialize('eng');
-      
-      console.log('Processing image with Tesseract OCR...');
-      const { data: { text } } = await worker.recognize(dataUrl);
+      const { data } = await worker.recognize(dataUrl);
+      const text = data.text;
       
       await worker.terminate();
-      console.log('Tesseract OCR processing complete');
+      console.log('Tesseract OCR processing complete. Sample text:', text.substring(0, 200));
       return text;
     } 
     // Handle DOCX files using a simulated approach for now
@@ -350,7 +349,8 @@ const parseResumeText = (text: string): ResumeAnalysisResult => {
     overallScore,
     preferredJobTitles,
     preferredLocations: ['Bengaluru', 'Hyderabad', 'Mumbai', 'Pune', 'Delhi', 'Chennai'],
-    improvementSuggestions
+    improvementSuggestions,
+    rawText: text.substring(0, 1000) // Store first 1000 chars of raw text for debugging
   };
 };
 
@@ -428,7 +428,8 @@ const getMockAnalysisResult = (): ResumeAnalysisResult => {
       "Add more technical skills relevant to your target roles",
       "Include a professional summary highlighting your strengths",
       "Ensure consistent formatting throughout your resume"
-    ]
+    ],
+    rawText: "This is sample mock text that would be replaced by actual extracted content."
   };
 };
 
