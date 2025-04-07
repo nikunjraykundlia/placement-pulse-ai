@@ -7,6 +7,7 @@ import SkillCard from "./SkillCard";
 import EducationCard from "./EducationCard";
 import ExperienceCard from "./ExperienceCard";
 import KeywordCloud from "./KeywordCloud";
+import JobRecommendations from "./JobRecommendations";
 
 interface ResumeAnalysisViewProps {
   analysis: ResumeAnalysisResult | null;
@@ -65,11 +66,12 @@ const ResumeAnalysisView = ({ analysis, isLoading }: ResumeAnalysisViewProps) =>
       </Card>
 
       <Tabs defaultValue="skills">
-        <TabsList className="grid grid-cols-4 mb-4">
+        <TabsList className="grid grid-cols-5 mb-4">
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="education">Education</TabsTrigger>
           <TabsTrigger value="experience">Experience</TabsTrigger>
           <TabsTrigger value="keywords">Keywords</TabsTrigger>
+          <TabsTrigger value="jobs">Jobs</TabsTrigger>
         </TabsList>
         
         <TabsContent value="skills">
@@ -111,6 +113,10 @@ const ResumeAnalysisView = ({ analysis, isLoading }: ResumeAnalysisViewProps) =>
         
         <TabsContent value="keywords">
           <KeywordCloud keywords={analysis.keywordMatches} />
+        </TabsContent>
+        
+        <TabsContent value="jobs">
+          <JobRecommendations analysis={analysis} />
         </TabsContent>
       </Tabs>
     </div>
