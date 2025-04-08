@@ -35,7 +35,11 @@ export interface ResumeAnalysisResult {
   preferredLocations?: string[];
   improvementSuggestions?: string[]; // Added for milestone 5
   rawText?: string; // Store raw text for debugging
+  debugInfo?: any; // Additional debug info
 }
+
+// Debug flag - set to true to see more detailed logs and raw text
+const DEBUG_MODE = true;
 
 // Function to extract text from a PDF using PDF.js
 const extractTextFromPDF = async (file: File): Promise<string> => {
@@ -53,7 +57,9 @@ const extractTextFromPDF = async (file: File): Promise<string> => {
       fullText += pageText + ' ';
     }
     
-    console.log('PDF text extraction successful. Sample text:', fullText.substring(0, 200));
+    if (DEBUG_MODE) {
+      console.log('PDF text extraction successful. Sample text:', fullText.substring(0, 200));
+    }
     return fullText;
   } catch (error) {
     console.error('Error extracting PDF text:', error);
@@ -74,7 +80,11 @@ const extractTextFromFile = async (file: File): Promise<string> => {
     // Handle images (JPEG, PNG, etc.)
     if (file.type.startsWith('image/')) {
       console.log('Processing image with Tesseract OCR...');
-      const worker = await createWorker('eng');
+      
+      // Fix the Tesseract worker creation
+      const worker = await createWorker({
+        logger: DEBUG_MODE ? m => console.log(m) : undefined,
+      });
       
       // Convert file to data URL for Tesseract to process
       const dataUrl = await new Promise<string>((resolve) => {
@@ -83,11 +93,15 @@ const extractTextFromFile = async (file: File): Promise<string> => {
         reader.readAsDataURL(file);
       });
       
+      await worker.loadLanguage('eng');
+      await worker.initialize('eng');
       const { data } = await worker.recognize(dataUrl);
       const text = data.text;
       
       await worker.terminate();
-      console.log('Tesseract OCR processing complete. Sample text:', text.substring(0, 200));
+      if (DEBUG_MODE) {
+        console.log('Tesseract OCR processing complete. Sample text:', text.substring(0, 200));
+      }
       return text;
     } 
     // Handle DOCX files using a simulated approach for now
@@ -106,10 +120,12 @@ const extractTextFromFile = async (file: File): Promise<string> => {
   }
 };
 
-// Function to parse text and extract structured information
+// Improved function to parse text and extract structured information
 const parseResumeText = (text: string): ResumeAnalysisResult => {
   console.log('Parsing extracted text...');
-  console.log('Sample of extracted text:', text.substring(0, 200) + '...');
+  if (DEBUG_MODE) {
+    console.log('Sample of extracted text:', text.substring(0, 500) + '...');
+  }
   
   // Extract skills (keywords frequently found in tech resumes)
   const skillKeywords = [
@@ -118,7 +134,13 @@ const parseResumeText = (text: string): ResumeAnalysisResult => {
     'Docker', 'Kubernetes', 'Git', 'GitHub', 'REST API', 'GraphQL',
     'MongoDB', 'Express', 'Django', 'Flask', 'Spring Boot', 'TensorFlow',
     'PyTorch', 'Machine Learning', 'AI', 'Data Science', 'DevOps',
-    'CI/CD', 'Jenkins', 'Agile', 'Scrum', 'Project Management'
+    'CI/CD', 'Jenkins', 'Agile', 'Scrum', 'Project Management',
+    // Add more skills
+    'Ruby', 'PHP', 'Go', 'Swift', 'Kotlin', 'R', 'Scala', 'Rust',
+    'Vue.js', 'Angular', 'Next.js', 'Redux', 'jQuery', 'Bootstrap',
+    'Tailwind CSS', 'SASS', 'LESS', 'PostgreSQL', 'MySQL', 'Oracle',
+    'Firebase', 'GraphQL', 'RESTful API', 'Microservices', 'Linux',
+    'Windows', 'macOS', 'Bash', 'PowerShell', 'Networking', 'Security'
   ];
   
   const extractedSkills: SkillAnalysis[] = [];
@@ -129,27 +151,48 @@ const parseResumeText = (text: string): ResumeAnalysisResult => {
   
   skillKeywords.forEach(skill => {
     if (textLower.includes(skill.toLowerCase())) {
-      // Simple scoring based on frequency and position in text
+      // Enhanced scoring based on frequency, position in text, and proximity to keywords like "expert", "proficient", etc.
       const count = (textLower.match(new RegExp(skill.toLowerCase(), 'g')) || []).length;
       const position = textLower.indexOf(skill.toLowerCase());
-      const relevance = Math.min(100, 60 + count * 10 + (position < 500 ? 10 : 0));
+      
+      // Check for skill level indicators
+      let skillLevelBoost = 0;
+      const expertiseTerms = ['expert', 'advanced', 'proficient', 'experienced', 'senior', 'lead'];
+      const intermediateTerms = ['intermediate', 'familiar', 'knowledgeable', 'competent'];
+      const beginnerTerms = ['beginner', 'basic', 'novice', 'learning', 'familiar'];
+      
+      // Search for expertise terms near the skill (within 50 chars)
+      const surroundingText = textLower.substring(
+        Math.max(0, position - 50), 
+        Math.min(textLower.length, position + skill.length + 50)
+      );
+      
+      if (expertiseTerms.some(term => surroundingText.includes(term))) {
+        skillLevelBoost = 20;
+      } else if (intermediateTerms.some(term => surroundingText.includes(term))) {
+        skillLevelBoost = 10;
+      } else if (beginnerTerms.some(term => surroundingText.includes(term))) {
+        skillLevelBoost = 0;
+      }
+      
+      const relevance = Math.min(100, 50 + count * 10 + (position < 500 ? 10 : 0) + skillLevelBoost);
       
       let level: 'beginner' | 'intermediate' | 'advanced' | 'expert';
       if (relevance > 90) {
         level = 'expert';
+        skillsScore += 1.5;
+      }
+      else if (relevance > 75) {
+        level = 'advanced'; 
         skillsScore += 1;
       }
-      else if (relevance > 80) {
-        level = 'advanced'; 
-        skillsScore += 0.75;
-      }
-      else if (relevance > 70) {
+      else if (relevance > 60) {
         level = 'intermediate';
-        skillsScore += 0.5;
+        skillsScore += 0.75;
       }
       else {
         level = 'beginner';
-        skillsScore += 0.25;
+        skillsScore += 0.5;
       }
       
       extractedSkills.push({ 
@@ -166,111 +209,35 @@ const parseResumeText = (text: string): ResumeAnalysisResult => {
   // Cap skills score at 25
   skillsScore = Math.min(25, skillsScore);
   
-  // Extract education (look for common degree abbreviations and education keywords)
-  const educationRegex = /(?:B\.?(?:Tech|Sc|A|E|S)|M\.?(?:Tech|Sc|A|BA|S)|Ph\.?D|MBA)(?:.{0,100}?)(?:19|20)\d{2}(?:\s*-\s*(?:19|20)\d{2}|present)?/gi;
-  const educationMatches = text.match(educationRegex) || [];
+  // Enhanced education extraction with better regex patterns
+  // This regex looks for education keywords followed by institution names and dates
+  const educationSections = extractEducationSections(text);
   
-  const education: EducationDetail[] = educationMatches.map(match => {
-    const degreeMatch = match.match(/B\.?(?:Tech|Sc|A|E|S)|M\.?(?:Tech|Sc|A|BA|S)|Ph\.?D|MBA/i);
-    const institutionMatch = match.match(/(?:university|college|institute|school)\s+(?:of\s+)?([A-Za-z\s]+)/i);
-    const yearMatch = match.match(/(19|20)\d{2}(?:\s*-\s*(?:(?:19|20)\d{2}|present))?/i);
-    const scoreMatch = match.match(/(?:CGPA|GPA|score)[\s:]+([\d\.]+)/i);
-    
-    return {
-      degree: degreeMatch ? degreeMatch[0] : "Degree not detected",
-      institution: institutionMatch ? institutionMatch[1] : "Institution not detected",
-      year: yearMatch ? yearMatch[0] : "Year not detected",
-      score: scoreMatch ? scoreMatch[1] : "Score not detected"
-    };
-  });
-  
-  // If no education detected, provide default placeholder
-  if (education.length === 0) {
-    education.push({
-      degree: "Degree not detected",
-      institution: "Institution not detected",
-      year: "Year not detected",
-      score: "Score not detected"
-    });
-  }
+  // Extract education with improved patterns
+  const educationDetails = extractEducationDetails(text, educationSections);
   
   // Education score - out of 20 points
-  const educationScore = Math.min(20, education.length * 10);
+  const educationScore = calculateEducationScore(educationDetails);
   
-  // Extract experience (look for job titles followed by company names)
-  const jobTitles = ['Engineer', 'Developer', 'Manager', 'Analyst', 'Designer', 
-                     'Consultant', 'Intern', 'Director', 'Lead', 'Architect'];
+  // Enhanced experience extraction
+  const experienceSections = extractExperienceSections(text);
+  const experienceDetails = extractExperienceDetails(text, experienceSections);
   
-  const experience: ExperienceDetail[] = [];
-  
-  let experienceScore = 0;
-  
-  jobTitles.forEach(title => {
-    const regex = new RegExp(`((?:\\w+\\s){0,2}${title}(?:\\s\\w+){0,2})(?:.{0,100}?)(?:19|20)\\d{2}(?:\\s*-\\s*(?:(?:19|20)\\d{2}|present))?`, 'gi');
-    const matches = text.matchAll(regex);
-    
-    for (const match of matches) {
-      const fullMatch = match[0];
-      const role = match[1] || "Role not specified";
-      const durationMatch = fullMatch.match(/(19|20)\d{2}(?:\s*-\s*(?:(?:19|20)\d{2}|present))?/i);
-      
-      // Look for highlights as bullet points or numbered lists
-      const highlightRegex = new RegExp(`(?:${role}.*?)((?:•|\\*|\\d+\\.)[^•\\*\\d]+)`, 'gi');
-      const highlightMatches = text.match(highlightRegex) || [];
-      
-      const highlights = highlightMatches.length > 0 
-        ? highlightMatches[0].split(/[•\*]|\d+\./).filter(h => h.trim().length > 0).map(h => h.trim())
-        : ["Responsibilities not specified"];
-      
-      if (durationMatch) {
-        // Calculate duration in months
-        const durationText = durationMatch[0];
-        let durationMonths = 0;
-        
-        const yearRangeMatch = durationText.match(/(20|19)\d{2}[^\d]+(20|19)\d{2}/);
-        if (yearRangeMatch) {
-          const startYear = parseInt(yearRangeMatch[0].substring(0, 4));
-          const endYear = parseInt(yearRangeMatch[0].substring(yearRangeMatch[0].length - 4));
-          durationMonths = (endYear - startYear) * 12;
-        }
-        
-        // Score based on duration
-        const durationScore = Math.min(5, durationMonths / 12);
-        
-        // Score based on highlights
-        const highlightScore = Math.min(5, highlights.length);
-        
-        experienceScore += durationScore + highlightScore;
-        
-        experience.push({
-          role: role,
-          company: "Company extracted from context", // Would be better extracted in a real implementation
-          duration: durationMatch[0],
-          highlights: highlights
-        });
-      }
-    }
-  });
-  
-  // Cap experience score at 25 points
-  experienceScore = Math.min(25, experienceScore);
-  
-  // If no experience detected, provide default placeholder
-  if (experience.length === 0) {
-    experience.push({
-      role: "Role not detected",
-      company: "Company not detected",
-      duration: "Duration not detected",
-      highlights: ["Experience details not detected"]
-    });
-  }
+  // Experience score - out of 25 points
+  const experienceScore = calculateExperienceScore(experienceDetails);
   
   // Extract keyword matches for general keywords
   const keywordMatches: { [key: string]: number } = {};
-  const commonKeywords = ['project', 'team', 'management', 'development', 'design', 
-                         'implementation', 'analysis', 'research', 'client', 'customer',
-                         'leadership', 'communication', 'problem-solving', 'innovation',
-                         'achievement', 'success', 'certification', 'award', 'publication'];
+  const commonKeywords = [
+    'project', 'team', 'management', 'development', 'design', 
+    'implementation', 'analysis', 'research', 'client', 'customer',
+    'leadership', 'communication', 'problem-solving', 'innovation',
+    'achievement', 'success', 'certification', 'award', 'publication',
+    'optimization', 'efficiency', 'collaboration', 'teamwork', 'agile',
+    'scrum', 'presentation', 'documentation', 'testing', 'debugging',
+    'mentoring', 'coaching', 'stakeholder', 'requirement', 'specification',
+    'workflow', 'process', 'strategy', 'planning', 'execution'
+  ];
   
   let keywordsScore = 0;
   commonKeywords.forEach(keyword => {
@@ -306,52 +273,459 @@ const parseResumeText = (text: string): ResumeAnalysisResult => {
   // Total: 25 (skills) + 20 (education) + 25 (experience) + 10 (keywords) + 20 (extra) = 100
   const overallScore = Math.round(skillsScore + educationScore + experienceScore + keywordsScore + extraScore);
   
-  // Generate improvement suggestions
-  const improvementSuggestions: string[] = [];
-  
-  // Suggestions based on skills
-  if (extractedSkills.length < 5) {
-    improvementSuggestions.push("Add more relevant technical skills to your resume to better match job requirements.");
-  }
-  
-  // Suggestions based on experience
-  if (experience.length < 2 || (experience.length > 0 && experience[0].highlights.length < 3)) {
-    improvementSuggestions.push("Quantify your achievements in your experience section with metrics (e.g., 'Increased sales by 20%').");
-    improvementSuggestions.push("Add more detailed bullet points to your experience section highlighting your responsibilities and accomplishments.");
-  }
-  
-  // Suggestions based on education
-  if (education.length === 0 || education[0].degree === "Degree not detected") {
-    improvementSuggestions.push("Clearly format your education section with degree, institution, year, and academic achievements.");
-  }
-  
-  // Suggestions based on keywords
-  if (Object.keys(keywordMatches).length < 6) {
-    improvementSuggestions.push("Include more industry-specific keywords throughout your resume to improve ATS compatibility.");
-  }
-  
-  // Suggestions for general improvements
-  improvementSuggestions.push("Consider adding a professional summary at the beginning of your resume.");
-  improvementSuggestions.push("Ensure consistent formatting and appropriate use of white space for improved readability.");
-  improvementSuggestions.push("Tailor your resume for each specific job application to highlight relevant skills and experience.");
+  // Generate improvement suggestions based on the parsed content
+  const improvementSuggestions = generateImprovementSuggestions(
+    extractedSkills, 
+    educationDetails,
+    experienceDetails, 
+    keywordMatches,
+    text
+  );
   
   // Extract potential job titles and locations for job matching
-  const preferredJobTitles = extractedSkills.length > 0 
-    ? [extractedSkills[0].skill + ' Developer', extractedSkills[0].skill + ' Engineer'] 
-    : ['Software Developer', 'Software Engineer'];
+  const preferredJobTitles = deriveJobTitles(extractedSkills, experienceDetails);
+  
+  // Debug information
+  const debugInfo = DEBUG_MODE ? {
+    skillsScore,
+    educationScore,
+    experienceScore,
+    keywordsScore,
+    extraScore,
+    certCount,
+    projectCount
+  } : undefined;
   
   // Return the structured result
   return {
     topSkills: extractedSkills.slice(0, 10), // Top 10 skills
-    education,
-    experience,
+    education: educationDetails,
+    experience: experienceDetails,
     keywordMatches,
     overallScore,
     preferredJobTitles,
     preferredLocations: ['Bengaluru', 'Hyderabad', 'Mumbai', 'Pune', 'Delhi', 'Chennai'],
     improvementSuggestions,
-    rawText: text.substring(0, 1000) // Store first 1000 chars of raw text for debugging
+    rawText: DEBUG_MODE ? text.substring(0, 2000) : undefined, // Store more text in debug mode
+    debugInfo
   };
+};
+
+// Helper function to extract education sections
+const extractEducationSections = (text: string): string[] => {
+  // First try to find sections that look like education sections
+  const educationRegex = /(?:EDUCATION|Education|ACADEMIC|Academic|QUALIFICATION|Qualification|ACADEMICS)(?:.{0,1000}?)(?=EXPERIENCE|Experience|WORK|Work|PROJECT|Project|SKILL|Skill|CERTIFICATION|Certification|ACHIEVEMENT|Achievement|REFERENCE|Reference|$)/gs;
+  const educationMatches = text.match(educationRegex) || [];
+  
+  if (educationMatches.length > 0) {
+    return educationMatches;
+  }
+  
+  // Fallback to scanning for degree mentions
+  const degreeRegex = /(?:B\.?(?:Tech|Sc|A|E|S)|M\.?(?:Tech|Sc|A|BA|S)|Ph\.?D|MBA|Bachelor|Master|Diploma)(?:.{0,200}?)(?:19|20)\d{2}/gi;
+  const degreeMatches = text.match(degreeRegex) || [];
+  
+  return degreeMatches;
+};
+
+// Helper function to extract experience sections
+const extractExperienceSections = (text: string): string[] => {
+  // First try to find sections that look like experience sections
+  const experienceRegex = /(?:EXPERIENCE|Experience|EMPLOYMENT|Employment|WORK HISTORY|Work History|PROFESSIONAL|Professional)(?:.{0,3000}?)(?=EDUCATION|Education|SKILL|Skill|PROJECT|Project|CERTIFICATION|Certification|ACHIEVEMENT|Achievement|REFERENCE|Reference|$)/gs;
+  const experienceMatches = text.match(experienceRegex) || [];
+  
+  if (experienceMatches.length > 0) {
+    return experienceMatches;
+  }
+  
+  // Fallback to scanning for job title mentions
+  const roleRegex = /(?:[A-Z][a-z]+ )?(?:Engineer|Developer|Manager|Analyst|Designer|Consultant|Director|Lead|Architect)(?:.{0,100}?)(?:19|20)\d{2}(?:\s*-\s*(?:(?:19|20)\d{2}|present|current))?/gi;
+  const roleMatches = text.match(roleRegex) || [];
+  
+  return roleMatches;
+};
+
+// Helper function to extract education details
+const extractEducationDetails = (text: string, educationSections: string[]): EducationDetail[] => {
+  const education: EducationDetail[] = [];
+  
+  if (educationSections.length === 0) {
+    // If no education sections found, search the full text
+    const degreeRegex = /(?:B\.?(?:Tech|Sc|A|E|S)|M\.?(?:Tech|Sc|A|BA|S)|Ph\.?D|MBA|Bachelor|Master|Diploma)(?:[^.\n,]{0,100})(?:(?:19|20)\d{2}|University|College|Institute)/gi;
+    const matches = text.match(degreeRegex) || [];
+    
+    matches.forEach(match => {
+      const degreeMatch = match.match(/(?:B\.?(?:Tech|Sc|A|E|S)|M\.?(?:Tech|Sc|A|BA|S)|Ph\.?D|MBA|Bachelor|Master|Diploma)/i);
+      const institutionMatch = match.match(/(?:University|College|Institute|School)(?:\s+of\s+)?([A-Za-z\s]+)/i);
+      const yearMatch = match.match(/(19|20)\d{2}(?:\s*-\s*(?:(?:19|20)\d{2}|present))?/i);
+      const scoreMatch = match.match(/(?:CGPA|GPA|score|percentage)[\s:]+([\d\.]+)(?:%)?/i);
+      
+      education.push({
+        degree: degreeMatch ? degreeMatch[0] : "Degree not detected",
+        institution: institutionMatch ? institutionMatch[0] : "Institution not detected",
+        year: yearMatch ? yearMatch[0] : "Year not detected",
+        score: scoreMatch ? scoreMatch[1] : "Score not detected"
+      });
+    });
+  } else {
+    // Process the education sections we found
+    educationSections.forEach(section => {
+      // Look for degree patterns
+      const degreeRegex = /(?:B\.?(?:Tech|Sc|A|E|S)|M\.?(?:Tech|Sc|A|BA|S)|Ph\.?D|MBA|Bachelor|Master|Diploma)/gi;
+      const degreeMatches = section.match(degreeRegex) || [];
+      
+      // Look for institution patterns
+      const institutionRegex = /(?:University|College|Institute|School)(?:\s+of\s+)?([A-Za-z\s,]+)/gi;
+      const institutionMatches = section.match(institutionRegex) || [];
+      
+      // Look for year patterns
+      const yearRegex = /(19|20)\d{2}(?:\s*-\s*(?:(?:19|20)\d{2}|present))?/gi;
+      const yearMatches = section.match(yearRegex) || [];
+      
+      // Look for score patterns
+      const scoreRegex = /(?:CGPA|GPA|score|percentage)[\s:]+([\d\.]+)(?:%)?/gi;
+      const scoreMatches = section.match(scoreRegex) || [];
+      
+      if (degreeMatches.length > 0) {
+        education.push({
+          degree: degreeMatches[0],
+          institution: institutionMatches.length > 0 ? institutionMatches[0] : "Institution not detected",
+          year: yearMatches.length > 0 ? yearMatches[0] : "Year not detected",
+          score: scoreMatches.length > 0 ? scoreMatches[0].replace(/(?:CGPA|GPA|score|percentage)[\s:]+/, '') : "Score not detected"
+        });
+      }
+    });
+  }
+  
+  // If still no education detected, provide default placeholder
+  if (education.length === 0) {
+    education.push({
+      degree: "Degree not detected",
+      institution: "Institution not detected",
+      year: "Year not detected",
+      score: "Score not detected"
+    });
+  }
+  
+  return education;
+};
+
+// Helper function to extract experience details
+const extractExperienceDetails = (text: string, experienceSections: string[]): ExperienceDetail[] => {
+  const experience: ExperienceDetail[] = [];
+  
+  if (experienceSections.length === 0) {
+    // If no experience sections found, search full text for role/date patterns
+    const jobTitles = ['Engineer', 'Developer', 'Manager', 'Analyst', 'Designer', 'Consultant', 'Intern', 'Director', 'Lead', 'Architect'];
+    
+    jobTitles.forEach(title => {
+      const regex = new RegExp(`((?:\\w+\\s){0,2}${title}(?:\\s\\w+){0,2})(?:.{0,100}?)(?:19|20)\\d{2}(?:\\s*-\\s*(?:(?:19|20)\\d{2}|present))?`, 'gi');
+      const matches = Array.from(text.matchAll(regex));
+      
+      matches.forEach(match => {
+        const fullMatch = match[0];
+        const role = match[1] || "Role not specified";
+        const durationMatch = fullMatch.match(/(19|20)\d{2}(?:\s*-\s*(?:(?:19|20)\d{2}|present))?/i);
+        
+        // Look for company name pattern near the role
+        const companyRegex = new RegExp(`${role}(?:.{0,50}?)at\\s+([A-Za-z0-9\\s&.,]+?)(?:\\.|,|\\n|$)`, 'i');
+        const companyMatch = text.match(companyRegex);
+        
+        // Look for highlights as bullet points or numbered lists
+        const highlightRegex = new RegExp(`(?:${role}.*?)((?:•|\\*|\\-|\\d+\\.)[^•\\*\\d]+)`, 'gi');
+        const highlightMatches = text.match(highlightRegex) || [];
+        
+        const highlights = highlightMatches.length > 0 
+          ? highlightMatches[0].split(/[•\*\-]|\d+\./).filter(h => h.trim().length > 0).map(h => h.trim())
+          : ["Responsibilities not specified"];
+        
+        if (durationMatch) {
+          experience.push({
+            role: role,
+            company: companyMatch ? companyMatch[1].trim() : "Company not detected",
+            duration: durationMatch[0],
+            highlights: highlights
+          });
+        }
+      });
+    });
+  } else {
+    // Process the experience sections we found
+    experienceSections.forEach(section => {
+      // Look for role patterns
+      const roleRegex = /(?:[A-Z][a-z]+ )?(?:Engineer|Developer|Manager|Analyst|Designer|Consultant|Director|Lead|Architect)(?:\s+[A-Za-z]+)?/gi;
+      const roleMatches = section.match(roleRegex) || [];
+      
+      // Look for company patterns
+      const companyRegex = /at\s+([A-Za-z0-9\s&.,]+?)(?:\.|,|\n|$)/gi;
+      const companyMatches = section.match(companyRegex) || [];
+      
+      // Look for duration patterns
+      const durationRegex = /(19|20)\d{2}(?:\s*-\s*(?:(?:19|20)\d{2}|present))?/gi;
+      const durationMatches = section.match(durationRegex) || [];
+      
+      // Look for bullet points as highlights
+      const bulletRegex = /(?:•|\*|\-|\d+\.)\s+([^\n•\*\d]+)/gi;
+      const bulletMatches = Array.from(section.matchAll(bulletRegex)) || [];
+      
+      const highlights = bulletMatches.map(match => match[1].trim());
+      
+      if (roleMatches.length > 0) {
+        experience.push({
+          role: roleMatches[0],
+          company: companyMatches.length > 0 ? companyMatches[0].replace(/at\s+/, '').trim() : "Company not detected",
+          duration: durationMatches.length > 0 ? durationMatches[0] : "Duration not detected",
+          highlights: highlights.length > 0 ? highlights : ["Responsibilities not specified"]
+        });
+      }
+    });
+  }
+  
+  // If no experience detected, provide default placeholder
+  if (experience.length === 0) {
+    experience.push({
+      role: "Role not detected",
+      company: "Company not detected",
+      duration: "Duration not detected",
+      highlights: ["Experience details not detected"]
+    });
+  }
+  
+  return experience;
+};
+
+// Helper function to calculate education score
+const calculateEducationScore = (education: EducationDetail[]): number => {
+  let score = 0;
+  
+  education.forEach(edu => {
+    // Points for having degree information
+    if (edu.degree !== "Degree not detected") {
+      score += 5;
+      
+      // Additional points for higher degrees
+      if (/Ph\.?D|Doctorate/i.test(edu.degree)) {
+        score += 5;
+      } else if (/M\.?(?:Tech|Sc|A|BA|S)|Master/i.test(edu.degree)) {
+        score += 3;
+      } else if (/B\.?(?:Tech|Sc|A|E|S)|Bachelor/i.test(edu.degree)) {
+        score += 2;
+      }
+    }
+    
+    // Points for having institution information
+    if (edu.institution !== "Institution not detected") {
+      score += 3;
+    }
+    
+    // Points for having year information
+    if (edu.year !== "Year not detected") {
+      score += 2;
+    }
+    
+    // Points for having score information
+    if (edu.score !== "Score not detected") {
+      score += 2;
+    }
+  });
+  
+  return Math.min(20, score); // Cap at 20 points
+};
+
+// Helper function to calculate experience score
+const calculateExperienceScore = (experience: ExperienceDetail[]): number => {
+  let score = 0;
+  
+  experience.forEach(exp => {
+    // Points for having role information
+    if (exp.role !== "Role not detected") {
+      score += 4;
+      
+      // Additional points for senior roles
+      if (/senior|lead|manager|director|head|chief/i.test(exp.role)) {
+        score += 3;
+      }
+    }
+    
+    // Points for having company information
+    if (exp.company !== "Company not detected") {
+      score += 3;
+    }
+    
+    // Points for having duration information
+    if (exp.duration !== "Duration not detected") {
+      score += 2;
+      
+      // Calculate duration in years (approximate)
+      const durationMatch = exp.duration.match(/(19|20)\d{2}(?:\s*-\s*(?:(19|20)\d{2}|present))?/i);
+      if (durationMatch) {
+        const startYear = parseInt(durationMatch[0].substring(0, 4));
+        const endYearMatch = durationMatch[0].match(/-\s*((?:19|20)\d{2}|present)/i);
+        let endYear;
+        
+        if (endYearMatch) {
+          endYear = endYearMatch[1].toLowerCase() === 'present' 
+            ? new Date().getFullYear() 
+            : parseInt(endYearMatch[1]);
+          
+          // Additional points based on years of experience
+          const years = endYear - startYear;
+          score += Math.min(5, years); // Up to 5 additional points
+        }
+      }
+    }
+    
+    // Points for having highlights
+    if (exp.highlights.length > 0 && exp.highlights[0] !== "Responsibilities not specified") {
+      // Points for each highlight (up to 5)
+      score += Math.min(5, exp.highlights.length);
+      
+      // Additional points for achievements with metrics
+      let achievementCount = 0;
+      exp.highlights.forEach(highlight => {
+        if (/increased|improved|reduced|achieved|delivered|led|managed|created|developed|implemented/i.test(highlight)) {
+          achievementCount++;
+        }
+        // Extra points for quantifiable achievements
+        if (/\d+%|\d+ percent|\d+ times/i.test(highlight)) {
+          achievementCount++;
+        }
+      });
+      
+      score += Math.min(3, achievementCount);
+    }
+  });
+  
+  return Math.min(25, score); // Cap at 25 points
+};
+
+// Helper function to generate improvement suggestions
+const generateImprovementSuggestions = (
+  skills: SkillAnalysis[],
+  education: EducationDetail[],
+  experience: ExperienceDetail[],
+  keywords: { [key: string]: number },
+  rawText: string
+): string[] => {
+  const suggestions: string[] = [];
+  
+  // Suggestions based on skills
+  if (skills.length < 5) {
+    suggestions.push("Add more relevant technical skills to your resume to better match job requirements.");
+  }
+  
+  // Suggestions based on experience
+  if (experience.length < 2 || (experience.length > 0 && experience[0].highlights.length < 3)) {
+    suggestions.push("Quantify your achievements in your experience section with metrics (e.g., 'Increased sales by 20%').");
+    suggestions.push("Add more detailed bullet points to your experience section highlighting your responsibilities and accomplishments.");
+  }
+  
+  // Check if experience contains quantifiable metrics
+  let hasQuantifiableMetrics = false;
+  experience.forEach(exp => {
+    exp.highlights.forEach(highlight => {
+      if (/\d+%|\d+ percent|\$\d+|\d+ times|\d+ customers|\d+ users|\d+ clients/i.test(highlight)) {
+        hasQuantifiableMetrics = true;
+      }
+    });
+  });
+  
+  if (!hasQuantifiableMetrics) {
+    suggestions.push("Include specific metrics and numbers in your experience section (e.g., 'Reduced costs by 15%' or 'Managed a team of 8 developers').");
+  }
+  
+  // Suggestions based on education
+  if (education.length === 0 || education[0].degree === "Degree not detected") {
+    suggestions.push("Clearly format your education section with degree, institution, year, and academic achievements.");
+  }
+  
+  // Suggestions based on keywords
+  if (Object.keys(keywords).length < 6) {
+    suggestions.push("Include more industry-specific keywords throughout your resume to improve ATS compatibility.");
+  }
+  
+  // Check for summary/objective
+  if (!rawText.toLowerCase().includes('summary') && !rawText.toLowerCase().includes('objective')) {
+    suggestions.push("Consider adding a professional summary at the beginning of your resume.");
+  }
+  
+  // Check for projects section
+  if (!rawText.toLowerCase().includes('project')) {
+    suggestions.push("Add a projects section to showcase practical applications of your skills.");
+  }
+  
+  // Check for certifications
+  if (!rawText.toLowerCase().includes('certif')) {
+    suggestions.push("Include relevant certifications to validate your skills and knowledge.");
+  }
+  
+  // Check for contact information
+  if (!rawText.toLowerCase().includes('@') || !(/\d{3}[-\.\s]?\d{3}[-\.\s]?\d{4}/.test(rawText))) {
+    suggestions.push("Ensure your contact information (email and phone) is clearly visible at the top of your resume.");
+  }
+  
+  // Suggestions for general improvements
+  suggestions.push("Ensure consistent formatting and appropriate use of white space for improved readability.");
+  suggestions.push("Tailor your resume for each specific job application to highlight relevant skills and experience.");
+  
+  return suggestions;
+};
+
+// Helper function to derive job titles
+const deriveJobTitles = (skills: SkillAnalysis[], experience: ExperienceDetail[]): string[] => {
+  const titles: string[] = [];
+  
+  // Derive from top skills
+  if (skills.length > 0) {
+    const topSkills = skills.slice(0, 3).map(s => s.skill);
+    
+    const techMapping: { [key: string]: string[] } = {
+      'JavaScript': ['JavaScript Developer', 'Frontend Developer', 'Full Stack Developer'],
+      'React': ['React Developer', 'Frontend Developer', 'UI Developer'],
+      'Node.js': ['Node.js Developer', 'Backend Developer', 'Full Stack Developer'],
+      'Python': ['Python Developer', 'Data Scientist', 'Backend Developer'],
+      'Java': ['Java Developer', 'Software Engineer', 'Backend Developer'],
+      'C#': ['C# Developer', '.NET Developer', 'Software Engineer'],
+      'SQL': ['Database Developer', 'Data Analyst', 'Backend Developer'],
+      'AWS': ['Cloud Engineer', 'DevOps Engineer', 'Solutions Architect'],
+      'Docker': ['DevOps Engineer', 'Cloud Engineer', 'Site Reliability Engineer'],
+      'Machine Learning': ['Machine Learning Engineer', 'Data Scientist', 'AI Specialist']
+    };
+    
+    topSkills.forEach(skill => {
+      if (techMapping[skill]) {
+        titles.push(...techMapping[skill]);
+      }
+    });
+    
+    // Add generic titles based on skill categories
+    const frontendSkills = ['JavaScript', 'React', 'Angular', 'Vue.js', 'HTML', 'CSS', 'UI', 'UX'];
+    const backendSkills = ['Node.js', 'Django', 'Flask', 'Express', 'Java', 'C#', 'PHP', 'Ruby'];
+    const dataSkills = ['Python', 'R', 'SQL', 'Machine Learning', 'Data Science', 'Statistics', 'Pandas'];
+    const devopsSkills = ['AWS', 'Azure', 'Docker', 'Kubernetes', 'Jenkins', 'CI/CD', 'DevOps'];
+    
+    const hasFrontend = topSkills.some(skill => frontendSkills.includes(skill));
+    const hasBackend = topSkills.some(skill => backendSkills.includes(skill));
+    const hasData = topSkills.some(skill => dataSkills.includes(skill));
+    const hasDevOps = topSkills.some(skill => devopsSkills.includes(skill));
+    
+    if (hasFrontend && hasBackend) titles.push('Full Stack Developer');
+    else if (hasFrontend) titles.push('Frontend Developer');
+    else if (hasBackend) titles.push('Backend Developer');
+    
+    if (hasData) titles.push('Data Scientist');
+    if (hasDevOps) titles.push('DevOps Engineer');
+  }
+  
+  // If we have experience, extract titles from there
+  experience.forEach(exp => {
+    if (exp.role !== "Role not detected") {
+      titles.push(exp.role);
+    }
+  });
+  
+  // Deduplicate and return limited list
+  return Array.from(new Set(titles)).slice(0, 5);
 };
 
 // Parser function to extract structured data from resume
@@ -375,7 +749,7 @@ const parseResumeContent = async (file: File): Promise<ResumeAnalysisResult> => 
   }
 };
 
-// Mock data for fallback
+// Enhanced mock data for fallback
 const getMockAnalysisResult = (): ResumeAnalysisResult => {
   return {
     topSkills: [
@@ -409,7 +783,8 @@ const getMockAnalysisResult = (): ResumeAnalysisResult => {
         highlights: [
           "Developed and maintained web applications using React",
           "Collaborated with senior developers on database optimization",
-          "Implemented responsive UI components"
+          "Implemented responsive UI components",
+          "Reduced page load time by 40% through code optimization"
         ]
       },
       {
@@ -418,7 +793,8 @@ const getMockAnalysisResult = (): ResumeAnalysisResult => {
         duration: "Aug 2022 - Present",
         highlights: [
           "Leading a team of 5 developers",
-          "Created a campus event management application"
+          "Created a campus event management application",
+          "Increased user engagement by 60% through UI improvements"
         ]
       }
     ],
@@ -427,7 +803,9 @@ const getMockAnalysisResult = (): ResumeAnalysisResult => {
       "Quantify your achievements with metrics (e.g., 'Increased efficiency by X%')",
       "Add more technical skills relevant to your target roles",
       "Include a professional summary highlighting your strengths",
-      "Ensure consistent formatting throughout your resume"
+      "Ensure consistent formatting throughout your resume",
+      "Add links to your GitHub profile or portfolio website",
+      "Include relevant certifications to validate your skills"
     ],
     rawText: "This is sample mock text that would be replaced by actual extracted content."
   };

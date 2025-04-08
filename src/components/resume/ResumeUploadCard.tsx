@@ -1,4 +1,3 @@
-
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -98,31 +97,25 @@ const ResumeUploadCard = () => {
     setIsUploading(true)
     setUploadError(null)
     
-    // Store that a resume was uploaded (for demo purposes)
-    localStorage.setItem('hasUploadedResume', 'true')
-    
     try {
-      // Simulate upload process for now
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
+      // Navigate to analysis page with the file
       toast({
-        title: "Resume uploaded successfully",
-        description: "We're analyzing your resume now.",
+        title: "Processing your resume",
+        description: "We're preparing to analyze your resume.",
         variant: "default"
       })
       
-      // Navigate to dashboard
-      setTimeout(() => {
-        navigate("/dashboard")
-      }, 1000)
+      // Navigate to the analysis page with the file
+      navigate("/resume-analysis", { state: { file } });
+      
     } catch (error) {
+      console.error('Upload error:', error);
       setUploadError("Upload failed. Please try again.")
       toast({
         title: "Upload failed",
         description: "Something went wrong. Please try again.",
         variant: "destructive"
       })
-    } finally {
       setIsUploading(false)
     }
   }

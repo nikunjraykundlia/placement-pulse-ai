@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
+import ResumeAnalysis from "./pages/ResumeAnalysis";
 import NotFound from "./pages/NotFound";
 import Header from "./components/layout/Header";
 
@@ -23,6 +24,8 @@ const PageTitleUpdater = () => {
       title = "Placement Pulse - AI Career Insights for Engineering Students";
     } else if (location.pathname === "/dashboard") {
       title = "Dashboard - Placement Pulse";
+    } else if (location.pathname === "/resume-analysis") {
+      title = "Resume Analysis - Placement Pulse";
     }
     
     document.title = title;
@@ -42,6 +45,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/resume-analysis" element={<ResumeAnalysis />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
